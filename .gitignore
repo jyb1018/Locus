@@ -27,3 +27,19 @@ __pycache__/
 node_modules/
 dist/
 coverage/
+
+# Python implementation and local M0 data
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+test-results.xml
+*.token
+fixture.json
+daemon.lock
+locus.sock
