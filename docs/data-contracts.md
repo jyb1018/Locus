@@ -94,7 +94,7 @@ supersedes_claim_id?, confidence?, derivation?
   "predicate": "locus.project.implementation_status",
   "value": "reported_complete",
   "evidence_refs": ["evt_demo_test_passed"],
-  "expected_subject_revision": 7,
+  "expected_subject_revision": "subrev_demo_7",
   "supersedes_claim_id": null,
   "idempotency_key": "demo_session_12_report_1"
 }
@@ -104,7 +104,7 @@ supersedes_claim_id?, confidence?, derivation?
 
 근거가 없는 일반 note를 허용하는 predicate는 명시적으로 따로 정의해야 합니다. 그런 note는 “근거 부족”으로 저장할 수 있지만 authoritative projection의 근거로 자동 채택하지 않습니다. 도메인 상태 Claim은 기본적으로 최소 하나의 Evidence를 요구합니다.
 
-저장 성공 응답은 `claim_id`, `recorded_sequence`, `subject_revision`, `projection_status`를 반환합니다. **accepted는 저장/형식 검증 성공이지 true 판정이 아닙니다.**
+저장 성공 응답은 `claim_id`, `write_receipt`, `subject_revision`, `projection_status`를 반환합니다. 외부의 receipt와 revision은 Principal·허용된 대상/predicate·정책에 묶인 opaque token이며, 내부 sequence나 다른 scope의 변경 횟수를 그대로 내보내지 않습니다. **accepted는 저장/형식 검증 성공이지 true 판정이 아닙니다.**
 
 ### 수명주기와 충돌
 
@@ -138,10 +138,10 @@ Resolver는 현재 필드별로 `RESOLVED / CONFLICTED / UNKNOWN`을 반환합�
 
 ```json
 {
-  "snapshot_sequence": 84,
-  "materialized_through": 80,
+  "snapshot_token": "snapshot_demo_scope_a",
+  "projection_status": "PENDING",
   "projection_version": "resource-context/1",
-  "policy_version": 3,
+  "policy_token": "policy_demo_scope_a",
   "generated_at": "2026-10-06T02:05:00Z",
   "freshness": "STALE",
   "coverage": "PARTIAL",
@@ -154,9 +154,9 @@ Resolver는 현재 필드별로 `RESOLVED / CONFLICTED / UNKNOWN`을 반환합�
 
 이는 응답 envelope 형태 예시이며 빈 `items`가 실제 상태라는 뜻은 아닙니다. Item별 value, resolution, evidence_refs, source observation time을 별도로 제공합니다.
 
-`materialized_through`는 필요한 module stream에서 빈틈 없이 처리한 watermark입니다. 실패한 이벤트를 건너뛰고 더 뒤의 sequence를 완료 watermark로 표시하지 않습니다. `freshness`는 journal 처리 여부와 source의 최근 성공 여부를 함께 고려합니다.
+내부 `materialized_through`는 필요한 module stream에서 빈틈 없이 처리한 watermark입니다. 전역 sequence/watermark는 일반 Agent 응답에 노출하지 않습니다. 외부 `snapshot_token`은 권한 범위의 snapshot을 식별하는 opaque token이며 내부 순번을 추정할 수 없게 합니다. 실패한 이벤트를 건너뛰고 더 뒤의 sequence를 완료 watermark로 표시하지 않습니다. `freshness`는 journal 처리 여부와 source의 최근 성공 여부를 함께 고려합니다.
 
-Core canonical write 직후 읽기는 해당 command의 저장 결과를 볼 수 있어야 합니다. 비동기 Module 결과까지 즉시 보장하지 않습니다. 조회자가 `min_sequence`를 요구했는데 준비되지 않았다면 `PROJECTION_PENDING`과 재시도 정보를 반환하고 오래 기다리지 않습니다.
+Core canonical write 직후 읽기는 해당 command의 저장 결과를 볼 수 있어야 합니다. 비동기 Module 결과까지 즉시 보장하지 않습니다. 조회자가 자기 write receipt를 `after_receipt`로 지정했는데 필요한 Projection이 준비되지 않았다면 `PROJECTION_PENDING`과 재시도 정보를 반환하고 오래 기다리지 않습니다.
 
 ### 제한된 응답
 
@@ -170,7 +170,7 @@ Cursor는 Principal·workspace·filter·policy version·상한 sequence·만료�
 
 Canonical 변경은 command receipt, journal append, 현재 테이블 변경을 같은 트랜잭션에 넣습니다. Source checkpoint도 해당 수용 단위와 원자적으로 갱신합니다. 파일 읽기·network·LLM·긴 계산 중에는 write transaction을 열어 두지 않습니다.
 
-명시적 수정/대체에는 `expected_subject_revision`을 요구합니다. 불일치하면 `VERSION_CONFLICT`를 반환하고 자동 overwrite하지 않습니다. 새 독립 Claim은 expected revision 없이 받을 수 있지만, 이 경우 기존 Claim의 supersession은 허용하지 않습니다.
+명시적 수정/대체에는 `expected_subject_revision`을 요구합니다. 외부 revision token은 허용된 대상/predicate의 쓰기 guard에 결합하고, 관계없는 비공개 predicate의 변경으로 token이나 conflict 응답이 달라지지 않게 합니다. 불일치하면 `VERSION_CONFLICT`를 반환하고 자동 overwrite하지 않습니다. 새 독립 Claim은 expected revision 없이 받을 수 있지만, 이 경우 기존 Claim의 supersession은 허용하지 않습니다.
 
 일반 command의 dedup 범위는 `(principal_id, workspace_id, idempotency_key)`입니다. 동일 key·동일 의미 입력은 저장된 원래 결과를 반환합니다. Key 재사용 시 semantic payload가 달라지면 거부합니다.
 
@@ -180,7 +180,7 @@ Module 처리는 at-least-once 재시도를 전제로 합니다. `(module_id, mo
 
 ## 8. Replay, Schema, 삭제
 
-Projection replay는 보존된 데이터와 고정된 resolver version의 결정론적 계산입니다. 외부 시스템 변경, LLM 호출, 원문 재수집을 replay에 섞지 않습니다. 재분석이 필요하면 새 command와 새 Claim으로 구분합니다.
+Projection replay는 보존된 데이터와 고정된 resolver version, 명시적인 `as_of` 시각을 입력으로 하는 결정론적 계산입니다. 유효 기간·freshness 계산에도 같은 `as_of`를 사용하며, replay 중 현재 시각을 임의로 읽지 않습니다. 현재 상태 조회는 별도의 새 `as_of`로 평가할 수 있습니다. 외부 시스템 변경, LLM 호출, 원문 재수집을 replay에 섞지 않습니다. 재분석이 필요하면 새 command와 새 Claim으로 구분합니다.
 
 Schema 버전과 Projection 버전은 분리합니다. Migration 전 consistent backup을 만들고 변환 테스트를 수행합니다. 지원하지 않는 버전은 임의로 해석하지 않습니다. Upgrade 실패 시 마지막 정상 Projection을 stale로 표시하고 오류를 드러냅니다.
 
