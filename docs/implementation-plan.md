@@ -1,6 +1,6 @@
 # Implementation Plan & Acceptance Criteria
 
-**현재 상태:** 아키텍처 문서만 있습니다. 아래 M0–M4는 아직 실행하지 않은 구현 계획입니다. 수치가 있는 항목도 성능 측정 결과가 아니라 초기 목표/실험 조건입니다.
+**현재 상태:** M0용 Core/IPC/MCP spike와 작은 M1 subset을 구현했습니다. 수행한 검사는 [M0 Validation](m0-validation.md), 실제 호스트 연결 절차는 [M0 Runbook](m0-runbook.md)을 따릅니다. 아래 M0–M4는 전체 수용 계획이며, 실제 제품 두 개의 통합과 M1 전체·M2–M4를 완료한 것은 아닙니다. 성능 수치도 여전히 초기 목표입니다.
 
 ## 1. 첫 제품 가설
 

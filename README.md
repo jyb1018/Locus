@@ -8,7 +8,7 @@ Locus는 여러 AI Agent가 함께 사용할 수 있는 **사용자 소유의 �
 
 여기서 OS는 하드웨어 운영체제나 Agent 실행 프레임워크가 아니라 **Agent와 개인의 디지털 환경 사이의 상태·권한·수명주기 중재 계층**이라는 뜻입니다.
 
-**상태: 설계 기준안 v0.1.1 / 2026-10-06.** 이 저장소에는 검토 및 개선한 아키텍처 문서가 있습니다. 실행 가능한 daemon, SDK, MCP 서버는 아직 구현하지 않았으며, 특정 AI 제품과의 연결도 아직 검증하지 않았습니다.
+**상태: M0 공유 상태 spike 구현 / 실제 AI 호스트 검증 대기.** 설계 기준은 v0.1.1이며, 단일 로컬 daemon·SQLite·stdio MCP 어댑터·두 Principal의 synthetic state 검증 코드가 추가되었습니다. 아래 전체 아키텍처가 모두 구현된 것은 아니며 특정 AI 제품과의 연결도 아직 검증하지 않았습니다.
 
 ```text
 AI host A ── stdio adapter ──┐
@@ -18,7 +18,7 @@ AI host B ── stdio adapter ──┘                  │
                                               └── Personal GC Module
 ```
 
-각 host가 별도 MCP 프로세스를 실행하더라도 adapter는 같은 `locusd`를 이용합니다. 독립 DB와 수집기를 Agent마다 만드는 구조는 피합니다. 이것은 첫 구현을 위한 설계안이며, 작동 확인된 제품 구성은 아닙니다.
+각 host가 별도 MCP 프로세스를 실행하더라도 adapter는 같은 `locusd`를 이용합니다. 독립 DB와 수집기를 Agent마다 만드는 구조는 피합니다. 현재 M0는 이 구조를 synthetic state로 구현합니다. 실제 제품 호스트 연결 확인과 Filesystem/GC 구현은 후속 단계입니다.
 
 ## 핵심 원칙
 
@@ -29,10 +29,24 @@ AI host B ── stdio adapter ──┘                  │
 
 Locus는 외부 세계의 절대적 진실이 아닙니다. **관찰 가능한 범위에서 확보한 근거와 현재의 해석을 관리합니다.** 파일·메일 등 원천 데이터의 권위는 원천 시스템에 남습니다.
 
+## M0 실행
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/python -m pytest -q
+.venv/bin/python -m locus.demo
+```
+
+`locus.demo`는 임시 데이터로 두 SDK stdio 클라이언트의 상태 공유·권한·재시작을 검증합니다. 실제 AI 제품 두 개의 통합 검사와는 다릅니다. **[머지 후 실행 및 호스트 연결 절차](docs/m0-runbook.md)**와 **[검증 결과/남은 항목](docs/m0-validation.md)**을 먼저 확인하십시오. 실제 비밀·개인정보는 M0에 넣지 않습니다.
+
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
+| [M0 Runbook](docs/m0-runbook.md) | 설치·합성 데모·호스트 A/B 설정·실제 검증 순서 |
+| [M0 Validation](docs/m0-validation.md) | 수행한 검사와 아직 미검증인 실제 호스트 연결 |
+| [M0 실행 경계 결정](docs/decisions/0001-m0-execution-boundary.md) | Python·SQLite·공식 MCP SDK 선택과 임시 범위 |
 | [아키텍처 검토](docs/architecture-review.md) | 기존 초안의 문제, 수정 이유, 유지한 방향 |
 | [Core Architecture](docs/architecture.md) | 책임 경계, 데이터 흐름, 저장·실행 모델 |
 | [Data Contracts](docs/data-contracts.md) | Event·Claim·Projection, 동시성, 오류·응답 계약 |
@@ -55,4 +69,4 @@ Locus는 외부 세계의 절대적 진실이 아닙니다. **관찰 가능한 �
 
 ## 개발 시작점
 
-[Implementation Plan](docs/implementation-plan.md)의 M0부터 진행합니다. 아직 실제 설치 명령이나 실행 명령은 제공하지 않습니다. 구현 언어와 SDK 버전은 host 연결 spike 이후 결정하고 고정합니다.
+[M0 Runbook](docs/m0-runbook.md)에 따라 실제 호스트 두 개의 연결을 먼저 확인합니다. Python/SDK는 M0용으로 고정했지만 호스트 요구에 따라 어댑터 선택을 재검토할 수 있습니다. Filesystem/GC와 전체 M1은 [Implementation Plan](docs/implementation-plan.md)의 후속 범위입니다.

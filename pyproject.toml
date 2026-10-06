@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "locus-state-os"
+version = "0.0.1"
+description = "Locus M0: user-owned shared state for compatible AI clients"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp==1.29.0"]
+dev = ["mcp==1.29.0", "pytest>=8,<10"]
+
+[project.scripts]
+locus = "locus.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = ["sdk: official MCP SDK subprocess integration (requires mcp extra)"]
